@@ -283,6 +283,16 @@ class Settings:
         i = i & 65535
         return [ i & 255, (i >> 8) & 255 ]
 
+
+class Status:
+    def __init__(self, settings: Settings, status: dict):
+        self.settings = settings
+        self.status = status
+
+    def __str__(self):
+        return str(self.settings) + '\n'.join('  %s: %s' % (k, v) for k, v in self.status.items())
+
+
 def call_aircon_command(aircon_ip, command, contents=None):
     url = f"http://{aircon_ip}:51443/beaver/command/{command}"
     data = {
@@ -357,6 +367,7 @@ def get_status(args):
 
 
     p = 0
+    status_dict = {}
     while (len(chunk2) / 4) > p:
         y = p * 4
         p += 1
@@ -365,37 +376,37 @@ def get_status(args):
         v3 = chunk2[y+2] # r3
         v4 = chunk2[y+3] # r11
         if v1 == 128 and v2 == 16:
-            outdoor_temp = constants.OUTDOOR_TEMPS[v3 & 255]
+            status_dict["outdoor_temp"] = constants.OUTDOOR_TEMPS[v3 & 255]
             #print("Outdoor Temp: %r" % outdoor_temp)
         else:
             if v1 == 128 and v2 == 32:
-                indoor_temp = constants.INDOOR_TEMPS[v3 & 255]
+                status_dict["indoor_temp"] = constants.INDOOR_TEMPS[v3 & 255]
                 #print("Indoor Temp: %r" % indoor_temp)
             else:
                 if v1 == 148 and v2 == 16:
-                    electric = float((v4 & 255) << 8 + (v3 & 255)) * 0.25
+                    status_dict["electric"] = float((v4 & 255) << 8 + (v3 & 255)) * 0.25
                     #print("Electric: %r" % electric)
                 else:
                     home_leave_mode_for_cooling = 0
                     home_leave_mode_for_heating = 0
                     if v1 == 248 and v2 == 16:
                         if v3 == 27:
-                            home_leave_cooling_temp_rule = v4 / 2.0
+                            status_dict["home_leave_cooling_temp_rule"] = v4 / 2.0
                         elif v3 == 28:
-                            home_leave_heating_temp_rule = v4 / 2.0
+                            status_dict["home_leave_heating_temp_rule"] = v4 / 2.0
                         elif v3 == 29:
-                            home_leave_cooling_temp_setting = v4 / 2.0
+                            status_dict["home_leave_cooling_temp_setting"] = v4 / 2.0
                         elif v3 == 30:
-                            home_leave_heating_temp_setting = v4 / 2.0
+                            status_dict["home_leave_heating_temp_setting"] = v4 / 2.0
                         elif v3 == 31:
-                            home_leave_cooling_air_flow = constants.HOME_LEAVE_MODE_AIR_FLOW[v4 & 15]
+                            status_dict["home_leave_cooling_air_flow"] = constants.HOME_LEAVE_MODE_AIR_FLOW[v4 & 15]
                         elif v3 == 32:
-                            home_leave_heating_air_flow = constants.HOME_LEAVE_MODE_AIR_FLOW[v4 & 15]
+                            status_dict["home_leave_heating_air_flow"] = constants.HOME_LEAVE_MODE_AIR_FLOW[v4 & 15]
 
-    return settings
+    return Status(settings, status_dict)
 
-def set_status(args):
-    settings = get_status(args)
+def set_settings(args):
+    settings = get_status(args).settings
     print(f"Current settings:\n{settings}")
 
     for arg, setting in [
@@ -512,10 +523,16 @@ def main():
     p_set.add_argument('--airflow', dest='airflow', type=int, choices=[0,1,2,3,4])
     p_set.add_argument('--wind-ud', dest='wind_ud', type=int, choices=[0,1,2,3,4])
     p_set.add_argument('--wind-lr', dest='wind_lr', type=int, choices=[0,1,2,3,4,5,6,7])
-    p_set.set_defaults(on_off=None, func=set_status)
+    p_set.set_defaults(on_off=None, func=set_settings)
 
     args = parser.parse_args()
-    args.func(args)
+    # args.func(args)
+    try:
+        func = args.func
+        func(args)
+    except AttributeError:
+        parser.error("too few arguments")
+
 
 if __name__ == '__main__':
     main()

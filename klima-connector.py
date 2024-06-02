@@ -189,12 +189,12 @@ def on_message(client, userdata, message):
             if str(message.payload.decode("utf-8"))== "ON":
                 logger.info("Set Power of " + inverter_name + " to ON ")
                 args.on_off = True
-                aircon.set_status(args)
+                aircon.set_settings(args)
             
             if str(message.payload.decode("utf-8"))== "OFF":
                 logger.info("Set Power of " + inverter_name + " to OFF ")
                 args.on_off = False
-                aircon.set_status(args)
+                aircon.set_settings(args)
                         
         if inverter_attribute == "preset_temperatur":
             try:
@@ -204,7 +204,7 @@ def on_message(client, userdata, message):
                 return
            
             logger.info("Set Preset Temperature of " + inverter_name + " to " +  str(message.payload.decode("utf-8")))
-            aircon.set_status(args)
+            aircon.set_settings(args)
         
         if inverter_attribute == "airflow":
             try:
@@ -218,7 +218,7 @@ def on_message(client, userdata, message):
                 return
             
             logger.info("Set Airflow of " + inverter_name + " to " +  str(message.payload.decode("utf-8")))
-            aircon.set_status(args)
+            aircon.set_settings(args)
                                        
     
 # Assign callback function to handle incoming messages
@@ -284,7 +284,7 @@ def loop():
             
                 args.IP = inverter.IP
             
-                settings = aircon.get_status(args)
+                settings = aircon.get_status(args).settings
                 
                 logger.debug("Status: " + str(settings.on_off.value))
                 logger.debug("Preset Temperature: " + str(settings.preset_temp.value))
