@@ -293,8 +293,18 @@ class Status:
         self.settings = settings
         self.status = status
 
+    def __getattr__(self, item):
+        if item in self.__dict__:
+            return getattr(self, item)
+        elif item in self.status:
+            return self.status[item]
+        elif hasattr(self.settings, item):
+            return getattr(self.settings, item)
+        else:
+            raise AttributeError()
+
     def __str__(self):
-        return str(self.settings) + '\n'.join('  %s: %s' % (k, v) for k, v in self.status.items())
+        return str(self.settings) + '\n' + '\n'.join('  %s: %s' % (k, v) for k, v in self.status.items())
 
 
 def call_aircon_command(aircon_ip, command, contents=None):
@@ -319,7 +329,7 @@ def call_aircon_command(aircon_ip, command, contents=None):
     # print("response: %r" % response)
 
     if not response or response.get('result', None) != 0:
-        raise Exception(f"Call to {url} failed")
+        raise Exception(f"Call to {url} failed: {response}")
     return response
 
 
@@ -412,7 +422,7 @@ def get_status(args):
 
 def set_settings(args):
     settings = get_status(args).settings
-    print(f"Current settings:\n{settings}")
+    # print(f"Current settings:\n{settings}")
 
     for arg, setting in [
             (args.temperature, settings.preset_temp),
@@ -424,7 +434,7 @@ def set_settings(args):
         if arg is not None:
             setting.set(arg)
 
-    print(f"New settings:\n{settings}")
+    # print(f"New settings:\n{settings}")
 
     payload = base64.b64encode(bytes(settings.to_bytes())).decode('utf-8')
 
